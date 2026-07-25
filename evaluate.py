@@ -112,11 +112,11 @@ class TransformerModel(pl.LightningModule):
         evaluator = Evaluator(gold, pred, tags=self.tag_list, loader="list")
 
         results, _ = evaluator.evaluate()
-        # self.log("valid/avg_loss", mean_val_loss, prog_bar=True)
-        # self.log("valid/ent_type", float(results["ent_type"]["f1"]))
-        # self.log("valid/partial", float(results["partial"]["f1"]))
-        # self.log("valid/strict", float(results["strict"]["f1"]), prog_bar=True)
-        # self.log("valid/exact", float(results["exact"]["f1"]))
+        self.log("valid/avg_loss", mean_val_loss, prog_bar=False)
+        self.log("valid/ent_type", float(results["ent_type"]["f1"]))
+        self.log("valid/partial", float(results["partial"]["f1"]))
+        self.log("valid/strict", float(results["strict"]["f1"]), prog_bar=False)
+        self.log("valid/exact", float(results["exact"]["f1"]))
 
         self.validation_step_outputs.clear()
 
@@ -461,7 +461,7 @@ def run_evaluation(args):
 
     print("\nFinal averaged results on TEST data: ")
     from pprint import pprint
-    print(result)
+    pprint(result)
 
 
 if __name__ == "__main__":
@@ -483,7 +483,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_max_length', type=int, default=512)
     parser.add_argument('--experiment_iterations', type=int, default=1)
     parser.add_argument('--devices', type=int, default=1)
-    parser.add_argument('--strategy', type=str, default=None)
+    parser.add_argument('--strategy', type=str, default="auto")
 
     args = parser.parse_args()
 
