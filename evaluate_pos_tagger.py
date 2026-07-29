@@ -127,13 +127,13 @@ class TransformerModel(pl.LightningModule):
         return {"loss": loss}
 
     def on_train_epoch_end(self):
-        self.log("train/loss", sum(self.train_data["loss"]) / len(self.train_data["loss"]), prog_bar=False)
-        self.log("train/upos_f1", f1_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
-        self.log("train/upos_precision", precision_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
-        self.log("train/upos_recall", recall_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
-        self.log("train/xpos_f1", f1_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"))
-        self.log("train/xpos_precision", precision_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"))
-        self.log("train/xpos_recall", recall_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"))
+        self.log("train/loss", sum(self.train_data["loss"]) / len(self.train_data["loss"]), prog_bar=False, sync_dist=True)
+        self.log("train/upos_f1", f1_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro", sync_dist=True))
+        self.log("train/upos_precision", precision_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("train/upos_recall", recall_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("train/xpos_f1", f1_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"), sync_dist=True)
+        self.log("train/xpos_precision", precision_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"), sync_dist=True)
+        self.log("train/xpos_recall", recall_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"), sync_dist=True)
 
     def validation_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
@@ -183,15 +183,15 @@ class TransformerModel(pl.LightningModule):
     def on_validation_epoch_end(self):
         upos_f1 = f1_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro")
         xpos_f1 = f1_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro")
-        self.log("valid/loss", sum(self.valid_data["loss"]) / len(self.valid_data["loss"]), prog_bar=False)
-        self.log("valid/upos_f1", upos_f1)
-        self.log("valid/upos_precision", precision_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"))
-        self.log("valid/upos_recall", recall_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"))
-        self.log("valid/xpos_f1", xpos_f1)
-        self.log("valid/xpos_precision", precision_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro"))
-        self.log("valid/xpos_recall", recall_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro"))
+        self.log("valid/loss", sum(self.valid_data["loss"]) / len(self.valid_data["loss"]), prog_bar=False, sync_dist=True)
+        self.log("valid/upos_f1", upos_f1, sync_dist=True)
+        self.log("valid/upos_precision", precision_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("valid/upos_recall", recall_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("valid/xpos_f1", xpos_f1, sync_dist=True)
+        self.log("valid/xpos_precision", precision_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro"), sync_dist=True)
+        self.log("valid/xpos_recall", recall_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro"), sync_dist=True)
 
-        self.log("valid/join_accuracy", (upos_f1+xpos_f1)/2.)
+        self.log("valid/join_accuracy", (upos_f1+xpos_f1)/2., sync_dist=True)
 
         print("\n Validation results: ")
         print(f"\t UPOS f1 = {upos_f1:.4f}\tXPOS f1 = {xpos_f1:.4f}")
@@ -242,13 +242,13 @@ class TransformerModel(pl.LightningModule):
         return {"loss": loss}
 
     def on_test_epoch_end(self):
-        self.log("test/loss", sum(self.test_data["loss"]) / len(self.test_data["loss"]), prog_bar=False)
-        self.log("test/upos_f1", f1_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
-        self.log("test/upos_precision", precision_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
-        self.log("test/upos_recall", recall_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
-        self.log("test/xpos_f1", f1_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"))
-        self.log("test/xpos_precision", precision_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"))
-        self.log("test/xpos_recall", recall_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"))
+        self.log("test/loss", sum(self.test_data["loss"]) / len(self.test_data["loss"]), prog_bar=False, sync_dist=True)
+        self.log("test/upos_f1", f1_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("test/upos_precision", precision_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("test/upos_recall", recall_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"), sync_dist=True)
+        self.log("test/xpos_f1", f1_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"), sync_dist=True)
+        self.log("test/xpos_precision", precision_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"), sync_dist=True)
+        self.log("test/xpos_recall", recall_score(self.test_data["gold_xpos"], self.test_data["pred_xpos"], average="micro"), sync_dist=True)
 
         self.test_data = {"gold_upos": [], "pred_upos": [], "gold_xpos": [], "pred_xpos": [], "loss": []}
 
