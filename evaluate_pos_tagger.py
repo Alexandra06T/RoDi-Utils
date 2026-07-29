@@ -433,7 +433,8 @@ def run_evaluation(
         experiment_iterations: int = 1,
         results_file: str = "results_ronec_v2.json",
         save_model = False,
-        accelerator = "gpu"
+        accelerator = "gpu",
+        strategy = "auto"
     ):
 
     print(f"Running {experiment_iterations} experiments with model {automodel_name}")
@@ -521,6 +522,7 @@ def run_evaluation(
             enable_checkpointing=True,
             accelerator=accelerator,
             accumulate_grad_batches=accumulate_grad_batches,
+            strategy=strategy
         )
         trainer.fit(model, train_dataloader, val_dataloader)
 
@@ -646,5 +648,6 @@ if __name__ == "__main__":
         experiment_iterations = args.experiment_iterations,
         results_file = args.results_file,
         save_model=args.save_model,
-        accelerator=args.accelerator
+        accelerator=args.accelerator,
+        strategy=args.strategy
     )
