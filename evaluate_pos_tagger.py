@@ -606,6 +606,8 @@ if __name__ == "__main__":
     parser.add_argument("--validation_file", type=str, default="ro_rrt-ud-dev.conllu")
     parser.add_argument("--test_file", type=str, default="ro_rrt-ud-test.conllu")
     parser.add_argument('--lr', type=float, default=1e-05)
+    parser.add_argument('--lr_factor', type=float, default=2/3)
+    parser.add_argument('--lr_patience', type=float, default=5)
     parser.add_argument('--model_max_length', type=int, default=512)
     parser.add_argument('--experiment_iterations', type=int, default=1)
     parser.add_argument('--results_file', type=str, default=None)
