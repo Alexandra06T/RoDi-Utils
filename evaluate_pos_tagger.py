@@ -176,8 +176,6 @@ class TransformerModel(pl.LightningModule):
 
         self.validation_step_outputs.append({
             "loss": loss,
-            "y": y,
-            "y_hat": y_hat
         })
 
         return {"loss": loss}
