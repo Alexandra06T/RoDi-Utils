@@ -12,7 +12,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 class TransformerModel(pl.LightningModule):
     def __init__(self, model_name="dumitrescustefan/bert-base-romanian-cased-v1", upos_tag_list=[],
-            xpos_tag_list=[], lr=2e-05, model_max_length=512):
+            xpos_tag_list=[], lr=2e-05, lr_factor=2/3, lr_patience=5, model_max_length=512):
         super().__init__()
 
         print("Loading AutoModel [{}]...".format(model_name))
@@ -29,6 +29,8 @@ class TransformerModel(pl.LightningModule):
         self.loss = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
         self.lr = lr
+        self.lr_factor = lr_factor
+        self.lr_patience = lr_patience
         self.model_max_length = model_max_length
         self.upos_tag_list = upos_tag_list
         self.xpos_tag_list = xpos_tag_list
@@ -122,7 +124,7 @@ class TransformerModel(pl.LightningModule):
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
-        self.log("train/loss", sum(self.train_data["loss"]) / len(self.train_data["loss"]), prog_bar=True)
+        self.log("train/loss", sum(self.train_data["loss"]) / len(self.train_data["loss"]), prog_bar=False)
         self.log("train/upos_f1", f1_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
         self.log("train/upos_precision", precision_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
         self.log("train/upos_recall", recall_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"))
@@ -169,12 +171,18 @@ class TransformerModel(pl.LightningModule):
 
         self.valid_data["loss"].append(loss.detach().cpu().numpy())
 
+        self.validation_step_outputs.append({
+            "loss": loss,
+            "y": y,
+            "y_hat": y_hat
+        })
+
         return {"loss": loss}
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
         upos_f1 = f1_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro")
         xpos_f1 = f1_score(self.valid_data["gold_xpos"], self.valid_data["pred_xpos"], average="micro")
-        self.log("valid/loss", sum(self.valid_data["loss"]) / len(self.valid_data["loss"]), prog_bar=True)
+        self.log("valid/loss", sum(self.valid_data["loss"]) / len(self.valid_data["loss"]), prog_bar=False)
         self.log("valid/upos_f1", upos_f1)
         self.log("valid/upos_precision", precision_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"))
         self.log("valid/upos_recall", recall_score(self.valid_data["gold_upos"], self.valid_data["pred_upos"], average="micro"))
@@ -188,6 +196,8 @@ class TransformerModel(pl.LightningModule):
         print(f"\t UPOS f1 = {upos_f1:.4f}\tXPOS f1 = {xpos_f1:.4f}")
 
         self.valid_data = {"gold_upos":[], "pred_upos":[], "gold_xpos":[], "pred_xpos":[], "loss":[]}
+
+        self.validation_step_outputs.clear()
 
     def test_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
@@ -230,8 +240,8 @@ class TransformerModel(pl.LightningModule):
 
         return {"loss": loss}
 
-    def test_epoch_end(self, outputs):
-        self.log("test/loss", sum(self.test_data["loss"]) / len(self.test_data["loss"]), prog_bar=True)
+    def on_test_epoch_end(self):
+        self.log("test/loss", sum(self.test_data["loss"]) / len(self.test_data["loss"]), prog_bar=False)
         self.log("test/upos_f1", f1_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
         self.log("test/upos_precision", precision_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
         self.log("test/upos_recall", recall_score(self.test_data["gold_upos"], self.test_data["pred_upos"], average="micro"))
@@ -241,8 +251,26 @@ class TransformerModel(pl.LightningModule):
 
         self.test_data = {"gold_upos": [], "pred_upos": [], "gold_xpos": [], "pred_xpos": [], "loss": []}
 
+        self.test_step_outputs.clear()
+
     def configure_optimizers(self):
-        return torch.optim.AdamW([p for p in self.parameters() if p.requires_grad], lr=self.lr, eps=1e-08)
+        optimizer = torch.optim.AdamW([p for p in self.parameters() if p.requires_grad], lr=self.lr, eps=1e-08)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': {
+                'scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer,
+                    factor=self.lr_factor,
+                    patience=self.lr_patience,
+                    mode='max'
+                ),
+                'interval': 'epoch',
+                'frequency': 1,
+                'monitor': 'valid/join_accuracy',
+                'strict': True,
+                'name': 'learning_rate',
+            }
+        }
 
 
 class MyDataset(Dataset):
@@ -393,8 +421,10 @@ def run_evaluation(
         validation_file: str = None,
         test_file: str = None,
 
-        gpus: int = 1,
+        devices: int = 1,
         batch_size: int = 32,
+        accumulate_grad_batches = 1,
+
         lr: float = 3e-5,
 
         experiment_iterations: int = 1,
@@ -460,23 +490,33 @@ def run_evaluation(
             upos_tag_list=upos_tag_list,
             xpos_tag_list=xpos_tag_list,
             lr=lr,
-            model_max_length=model_max_length
+            lr_factor=args.lr_factor,
+            lr_patience=args.lr_patience,
+            model_max_length=model_max_length,
         )
 
         early_stop = EarlyStopping(
             monitor='valid/join_accuracy',
+            min_delta=0.0001,
             patience=5,
             verbose=True,
             mode='max'
         )
 
+        lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval='epoch')
+
+        model_checkpointer = pl.callbacks.ModelCheckpoint(save_top_k=1, monitor='valid/join_accuracy', dirpath=args.dirpath,
+                                                          filename='{epoch}', mode='max', save_on_train_epoch_end=True)
+
         trainer = pl.Trainer(
-            gpus=gpus,
-            callbacks=[early_stop],
+            devices=devices,
+            callbacks=[early_stop, lr_monitor, model_checkpointer],
             #limit_train_batches=24,
             #limit_val_batches=3,
             gradient_clip_val=1.0,
-            enable_checkpointing=False
+            enable_checkpointing=True,
+            accelerator=accelarator,
+            accumulate_grad_batches=accumulate_grad_batches,
         )
         trainer.fit(model, train_dataloader, val_dataloader)
 
@@ -505,9 +545,9 @@ def run_evaluation(
         itt += 1
 
     if save_model is True:
-      print("\nSaving model to trained_model/")
-      model.model.save_pretrained("trained_model/")
-      model.tokenizer.save_pretrained("trained_model/")
+      print("\nSaving model")
+      model.model.save_pretrained(args.dirpath)
+      model.tokenizer.save_pretrained(args.dirpath)
 
     print("\nDone, writing results...")
 
@@ -548,13 +588,15 @@ def download_data():
         open('ro_rrt-ud-test.conllu', 'wb').write(r.content)
 
 if __name__ == "__main__":
-    download_data()
+    # download_data()
 
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('--gpus', type=int, default=1)
+    parser.add_argument('--devices', type=int, default=1)
+    parser.add_argument('--accelerator', type=str, default="gpu")
     parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--accumulate_grad_batches', type=int, default=2)
     parser.add_argument('--model_name', type=str,
                         default="dumitrescustefan/bert-base-romanian-cased-v1")  # xlm-roberta-base
     parser.add_argument('--tokenizer_name', type=str, default=None)
@@ -566,11 +608,21 @@ if __name__ == "__main__":
     parser.add_argument('--experiment_iterations', type=int, default=1)
     parser.add_argument('--results_file', type=str, default=None)
     parser.add_argument('--save_model', type=str, default=False)
+    parser.add_argument('--strategy', type=str, default="auto")
+    parser.add_argument('--seed', type=int, default=-1)
+    parser.add_argument("--dirpath", type=str, default=None)
 
     args = parser.parse_args()
 
     if args.tokenizer_name is None:
         args.tokenizer_name = args.model_name
+
+    if args.seed >= 0:
+        pl.seed_everything(args.seed, workers=True)
+        set_seed(args.seed)
+        os.environ['PYTHONHASHSEED']=str(args.seed)
+    else:
+        print("Using a random seed.")
 
     run_evaluation(
         automodel_name = args.model_name,
@@ -579,10 +631,11 @@ if __name__ == "__main__":
         train_file = args.train_file,
         validation_file = args.validation_file,
         test_file = args.test_file,
-        gpus = args.gpus,
+        devices = args.devices,
+        accumulate_grad_batches=accumulate_grad_batches,
         batch_size = args.batch_size,
         lr = args.lr,
         experiment_iterations = args.experiment_iterations,
         results_file = args.results_file,
-        save_model=args.save_model
+        save_model=args.save_model,
     )
