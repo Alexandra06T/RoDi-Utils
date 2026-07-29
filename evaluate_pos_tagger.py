@@ -15,6 +15,9 @@ class TransformerModel(pl.LightningModule):
             xpos_tag_list=[], lr=2e-05, lr_factor=2/3, lr_patience=5, model_max_length=512):
         super().__init__()
 
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+
         print("Loading AutoModel [{}]...".format(model_name))
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
