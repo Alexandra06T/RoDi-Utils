@@ -426,6 +426,8 @@ def run_evaluation(
         accumulate_grad_batches = 1,
 
         lr: float = 3e-5,
+        lr_factor: float = 2/3,
+        lr_patience: int = 5,
 
         experiment_iterations: int = 1,
         results_file: str = "results_ronec_v2.json",
@@ -490,8 +492,8 @@ def run_evaluation(
             upos_tag_list=upos_tag_list,
             xpos_tag_list=xpos_tag_list,
             lr=lr,
-            lr_factor=args.lr_factor,
-            lr_patience=args.lr_patience,
+            lr_factor=lr_factor,
+            lr_patience=lr_patience,
             model_max_length=model_max_length,
         )
 
@@ -635,6 +637,8 @@ if __name__ == "__main__":
         accumulate_grad_batches=args.accumulate_grad_batches,
         batch_size = args.batch_size,
         lr = args.lr,
+        lr_factor=args.lr_factor,
+        lr_patience=args.lr_patience,
         experiment_iterations = args.experiment_iterations,
         results_file = args.results_file,
         save_model=args.save_model,
