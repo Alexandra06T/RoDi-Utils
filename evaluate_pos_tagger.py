@@ -632,7 +632,7 @@ if __name__ == "__main__":
         validation_file = args.validation_file,
         test_file = args.test_file,
         devices = args.devices,
-        accumulate_grad_batches=accumulate_grad_batches,
+        accumulate_grad_batches=args.accumulate_grad_batches,
         batch_size = args.batch_size,
         lr = args.lr,
         experiment_iterations = args.experiment_iterations,
