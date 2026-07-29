@@ -4,7 +4,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.data import DataLoader
 from sklearn.metrics import precision_score, recall_score, f1_score
 import pytorch_lightning as pl
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, set_seed
 from pytorch_lightning.callbacks import EarlyStopping
 import numpy as np
 
