@@ -128,7 +128,7 @@ class TransformerModel(pl.LightningModule):
 
     def on_train_epoch_end(self):
         self.log("train/loss", sum(self.train_data["loss"]) / len(self.train_data["loss"]), prog_bar=False, sync_dist=True)
-        self.log("train/upos_f1", f1_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro", sync_dist=True))
+        self.log("train/upos_f1", f1_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"), sync_dist=True)
         self.log("train/upos_precision", precision_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"), sync_dist=True)
         self.log("train/upos_recall", recall_score(self.train_data["gold_upos"], self.train_data["pred_upos"], average="micro"), sync_dist=True)
         self.log("train/xpos_f1", f1_score(self.train_data["gold_xpos"], self.train_data["pred_xpos"], average="micro"), sync_dist=True)
