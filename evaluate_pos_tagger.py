@@ -86,7 +86,6 @@ class TransformerModel(pl.LightningModule):
         # output = self.model(input_ids=input_ids, attention_mask=attention_mask)
         # sequence_output = output.last_hidden_state
 
-        # --- TO THIS ---
         if hasattr(self.model, "encoder"):
             # Handles Encoder-Decoder models like mT5 / T5 / BART
             encoder_outputs = self.model.encoder(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
@@ -96,9 +95,10 @@ class TransformerModel(pl.LightningModule):
             outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
             output = outputs.last_hidden_state
 
-        logits = self.dropout(output["last_hidden_state"]) # [bs, seq_len, model dim]
-        upos = self.upos_layer(logits) # [bs, seq_len, upos_len]
-        xpos = self.xpos_layer(logits) # [bs, seq_len, xpos_len]
+            # FIXED: Pass output directly, since it's already the hidden state tensor
+        logits = self.dropout(output)  # [bs, seq_len, model dim]
+        upos = self.upos_layer(logits)  # [bs, seq_len, upos_len]
+        xpos = self.xpos_layer(logits)  # [bs, seq_len, xpos_len]
 
         return upos, xpos
 
