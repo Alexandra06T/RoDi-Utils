@@ -66,11 +66,19 @@ class TransformerModel(pl.LightningModule):
             return
         raise Exception("Could not detect SEP/EOS/BOS/CLS tokens, and thus could not assign a PAD token which is required.")
 
-    
-    def get_hidden_size(self):    
-        inputs = self.tokenizer("text", return_tensors="pt")
-        outputs = self.model(**inputs)
-        return outputs.last_hidden_state.size(-1)
+    def get_hidden_size(self):
+        # Check common Hugging Face config attributes for embedding dimensions
+        config = self.model.config
+
+        for attr in ["hidden_size", "d_model", "dim", "n_embd"]:
+            if hasattr(config, attr):
+                return getattr(config, attr)
+
+        # Fallback for encoder-decoder architectures
+        if hasattr(config, "encoder") and hasattr(config.encoder, "hidden_size"):
+            return config.encoder.hidden_size
+
+        raise AttributeError("Could not automatically determine model hidden size from config.")
 
 
     def forward(self, input_ids, attention_mask):
