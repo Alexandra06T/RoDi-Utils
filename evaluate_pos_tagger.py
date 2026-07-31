@@ -82,11 +82,20 @@ class TransformerModel(pl.LightningModule):
 
 
     def forward(self, input_ids, attention_mask):
-        output = self.model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            return_dict=True
-        )
+        # --- CHANGE THIS (Line ~85) ---
+        # output = self.model(input_ids=input_ids, attention_mask=attention_mask)
+        # sequence_output = output.last_hidden_state
+
+        # --- TO THIS ---
+        if hasattr(self.model, "encoder"):
+            # Handles Encoder-Decoder models like mT5 / T5 / BART
+            encoder_outputs = self.model.encoder(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
+            output = encoder_outputs.last_hidden_state
+        else:
+            # Handles Encoder-Only models like BERT / RoBERTa / DistilBERT
+            outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, return_dict=True)
+            output = outputs.last_hidden_state
+
         logits = self.dropout(output["last_hidden_state"]) # [bs, seq_len, model dim]
         upos = self.upos_layer(logits) # [bs, seq_len, upos_len]
         xpos = self.xpos_layer(logits) # [bs, seq_len, xpos_len]
