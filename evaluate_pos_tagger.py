@@ -475,11 +475,11 @@ def run_evaluation(
 
     my_collator = MyCollator(tokenizer=tokenizer, upos_tag_list=upos_tag_list, xpos_tag_list=xpos_tag_list)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True,
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=2, shuffle=True,
                                   collate_fn=my_collator, pin_memory=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4, shuffle=False,
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=2, shuffle=False,
                                 collate_fn=my_collator, pin_memory=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=4, shuffle=False,
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=2, shuffle=False,
                                  collate_fn=my_collator, pin_memory=True)
 
 
